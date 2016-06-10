@@ -256,11 +256,11 @@ void ObstacleGrowth(BehringCells*** grid, int gridWidth, int gridHeight)
   printf("GRID:\n");
   for(i=0; i<gridHeight; ++i)
     {
-    for(j=0; j<gridWidth; ++j)
-    {
-    printf("%d-",(*grid)[j][i]);
-    }
-    printf("\n");
+      for(j=0; j<gridWidth; ++j)
+	{
+	  printf("%d-",(*grid)[j][i]);
+	}
+      printf("\n");
     }
 
   //Deallocate
@@ -388,7 +388,7 @@ void DistanceCalculation(BehringCells** grid, int gridWidth, int gridHeight, int
 	}
 
       ++steps;
-      //printf("STEPS=%d\n", steps);
+      /* printf("STEPS=%d\n", steps); */
 
       //if((*distance)[startXPosition][startYPosition] < INT_MAX - GROWING_STEPS - 1)
       if((*distance)[startXPosition][startYPosition] < INT_MAX)
@@ -452,8 +452,8 @@ void DistanceCalculation(BehringCells** grid, int gridWidth, int gridHeight, int
 	}
     }
 
-  char obstacleGrowed = 0;
-  while(!obstacleGrowed)
+  char obstacleGrown = 0;
+  while(!obstacleGrown)
     {
       for(i=0; i<gridWidth; ++i)
 	{
@@ -510,10 +510,10 @@ void DistanceCalculation(BehringCells** grid, int gridWidth, int gridHeight, int
 	}
 
       if(sameObstacles)
-	obstacleGrowed = 1;
+	obstacleGrown = 1;
     }
 
-  //printf("FINALDIST:%d\n", (*distance)[startXPosition][startYPosition]);
+  printf("FINALDIST:%d\n", (*distance)[startXPosition][startYPosition]);
 
   for(i=0; i<gridWidth; ++i)
     {
@@ -621,6 +621,7 @@ error_code Control(EPuck* robot)
   int gridColumn;
   int gridLine;
   CalculateGridPosition(floor, &robotPoint, &(gridColumn), &(gridLine));
+  printf("\nInitial grid position: %d  %d\n", gridColumn, gridLine);
 
   //int stepsQuantity = 5;
   int step;
@@ -633,7 +634,7 @@ error_code Control(EPuck* robot)
   DistanceCalculation(floor->pmDiscretizedFloor, floor->mDiscretizedFloorWidth, floor->mDiscretizedFloorHeight, &(distanceGrid), &(approximationGrid));
   RobotDirection* directions;
   //Get plan
-  int directionsSize =GetDirectionList(gridLine, gridColumn, floor->mDiscretizedFloorWidth, floor->mDiscretizedFloorHeight, distanceGrid, approximationGrid, &directions);
+  int directionsSize = GetDirectionList(gridLine, gridColumn, floor->mDiscretizedFloorWidth, floor->mDiscretizedFloorHeight, distanceGrid, approximationGrid, &directions);
   //int directionsSize = 0;
   //printf("DIRECTIONSIZE=%d\n", directionsSize);
 
@@ -1521,7 +1522,7 @@ error_code BuildEPuck(EPuck* robot)
   
   //error_code errorCode = ObjectHandle("ePuck", &(robot->mEPuckHandle));
   //if(errorCode != EPUCK_NO_ERROR)
-    //return errorCode;
+  //return errorCode;
 
   //errorCode = GetObjectHandle("GPS", &(robot->mGPSHandle));
   //if(errorCode != EPUCK_NO_ERROR)
@@ -1688,21 +1689,21 @@ error_code BuildObstacles(Floor* floor, int obstacleQuantity, Obstacle** obstacl
     }
 
   /* ATTENTION: The axis convention related to the world behring.wbt is as follows 
-                                |
-				|
-				|
-				|
-				|
-				|
-    -----------------------------------------------------------X
-                                |
-				|
-				|
-				|
-				|
-				|
-				Y
-  In Webots, our +Y is -X, and our +X is +Z			      
+     |
+     |
+     |
+     |
+     |
+     |
+     -----------------------------------------------------------X
+     |
+     |
+     |
+     |
+     |
+     |
+     Y
+     In Webots, our +Y is -X, and our +X is +Z			      
   */
   
   obstacles[0]->mPosition[0] = -0.27f;
@@ -1834,32 +1835,58 @@ error_code BuildObstacles(Floor* floor, int obstacleQuantity, Obstacle** obstacl
 }
 
 /*error_code GetBoundingRect(int handle, Rect* objectRect)
-{
+  {
   error_code error = GetObjectFloatParameters(handle, &(objectRect->mOrigin.mX), OBJECT_MIN_X_POSITION);
   if(error != EPUCK_NO_ERROR)
-    return error;
+  return error;
   error = GetObjectFloatParameters(handle, &(objectRect->mOrigin.mY), OBJECT_MIN_Y_POSITION);
   if(error != EPUCK_NO_ERROR)
-    return error;
+  return error;
   error = GetObjectFloatParameters(handle, &(objectRect->mEnd.mX), OBJECT_MAX_X_POSITION);
   if(error != EPUCK_NO_ERROR)
-    return error;
+  return error;
   error = GetObjectFloatParameters(handle, &(objectRect->mEnd.mY), OBJECT_MAX_Y_POSITION);
   if(error != EPUCK_NO_ERROR)
-    return error;
+  return error;
 
   //	printf("BOUNDING = %f %f - %f %f\n", objectRect->mOrigin.mX, objectRect->mOrigin.mY, objectRect->mEnd.mX, objectRect->mEnd.mY);
 
   return EPUCK_NO_ERROR;
-}*/
+  }*/
 
 error_code CalculateGridPosition(Floor* pFloor, Point* pPoint, int* pGridColumn, int* pGridLine)
 {
-  //This only works because the floor is on position (0,0,0).
+  float gridColumn, gridLine;
+  gridColumn = fabs(pPoint->mX - pFloor->mFloorRect.mOrigin.mX) / CELL_SIZE;
+  gridLine = fabs(pPoint->mY - pFloor->mFloorRect.mOrigin.mY) / CELL_SIZE;
+
+  /* Here I consider the case in which the obstacle starts or ends right on an edge of a cell.
+     In case I don't do this, the object is going to be considered as occupying a cell from which it 
+     only toches its edge.
+     If it happens, the division above is going to return an integer (no fractional part).
+  */
+  
+  if ((gridColumn - (int) gridColumn) != 0) {
+    *pGridColumn = gridColumn;
+  } else {
+    *pGridColumn = gridColumn - 1;
+  }
+
+  if ((gridLine - (int) gridLine) != 0) {
+    *pGridLine = gridLine;
+  } else {
+    *pGridLine = gridLine - 1;
+  }
+
+
+  
+  //This only works because the floor is on position (0,0,0). (ORIGINAL GIORDANO'S IMPLEMENTATION)
   /* (*pGridColumn) = (fabs(pPoint->mX - pFloor->mFloorRect.mOrigin.mX) * pFloor->mDiscretizedFloorWidth) / pFloor->mContinuousFloorWidth; */
   /* (*pGridLine) = (fabs(pPoint->mY - pFloor->mFloorRect.mOrigin.mY) * pFloor->mDiscretizedFloorHeight) / pFloor->mContinuousFloorHeight; */
-  *pGridColumn = fabs(pPoint->mX - pFloor->mFloorRect.mOrigin.mX) / CELL_SIZE;
-  *pGridLine = fabs(pPoint->mY - pFloor->mFloorRect.mOrigin.mY) / CELL_SIZE;
+
+  /* *pGridColumn = fabs(pPoint->mX - pFloor->mFloorRect.mOrigin.mX) / CELL_SIZE; */
+  /* *pGridLine = fabs(pPoint->mY - pFloor->mFloorRect.mOrigin.mY) / CELL_SIZE; */
+  
   /* printf("line value: %.2f\n", (pPoint->mY - pFloor->mFloorRect.mOrigin.mY)); */
   
   return EPUCK_NO_ERROR;
@@ -2273,31 +2300,31 @@ void Disconnect()
 
 //Getters
 /*error_code GetObjectHandle(char* objectName, WbDeviceTag* handle)
-{
+  {
   //if(simxGetObjectHandle(objectName, handle, simx_opmode_oneshot_wait)!=simx_error_noerror)
   //return EPUCK_HANDLE_NOT_FOUND_ERROR;
   (*handle) = wb_robot_get_device(objectName);
   return EPUCK_NO_ERROR;
-}*/
+  }*/
 
 /*error_code GetObjectPosition(WbDeviceTag gpsHandle, float* position)
-{
+  {
   ////rb_red_blk_node* node;
   WbDeviceTag* newHandle;
   node = ////rbExactQuery(//tree,&gpsHandle);
 
   if(node) //(//node)
-    {
-      //printf("%f\n", ((float*)(//node->info))[0] + 0.1);
-    }
+  {
+  //printf("%f\n", ((float*)(//node->info))[0] + 0.1);
+  }
   else
-    {
-      newHandle = malloc(sizeof(WbDeviceTag));
-      position[0] = 0.0;
-      position[1] = 0.0;
-      position[2] = 0.0;
-      ////rb//treeInsert(//tree,newHandle,position);
-    }
+  {
+  newHandle = malloc(sizeof(WbDeviceTag));
+  position[0] = 0.0;
+  position[1] = 0.0;
+  position[2] = 0.0;
+  ////rb//treeInsert(//tree,newHandle,position);
+  }
 
   position = (float*) wb_gps_get_values(newHandle);
 
@@ -2305,37 +2332,37 @@ void Disconnect()
   //if(simxGetObjectPosition(handle, -1, position, simx_opmode_oneshot_wait)!=simx_error_noerror)
   //	return EPUCK_POSITION_NOT_FOUND_ERROR;
   return EPUCK_NO_ERROR;
-}*/
+  }*/
 
 /*error_code GetObjectOrientation(WbDeviceTag handle, float* orientation)
-{
+  {
   //:TODO: Assynchronize call
   //if(simxGetObjectOrientation(handle, -1, orientation, simx_opmode_oneshot_wait)!=simx_error_noerror)
   //	return EPUCK_POSITION_NOT_FOUND_ERROR;
   return EPUCK_NO_ERROR;
-}*/
+  }*/
 
 /*error_code GetObjectFloatParameters(WbDeviceTag handle, float* parameterValue, object_parameter parameter)
-{
+  {
   //if(simxGetObjectFloatParameter(handle, parameter, parameterValue, simx_opmode_oneshot_wait) != simx_error_noerror)
   //	return EPUCK_PARAMETER_NOT_FOUND_ERROR;
   return EPUCK_NO_ERROR;
-}*/
+  }*/
 
 /*error_code GetObjectProximitySensor(WbDeviceTag handle, char* detectionState, float* detectedPointCoords, int* detectedObjectHandle)
-{
+  {
   //:TODO: Change to streaming
   //if(simxReadProximitySensor(handle, detectionState, detectedPointCoords, detectedObjectHandle, NULL, simx_opmode_oneshot_wait) != simx_error_noerror)
   //	return EPUCK_PARAMETER_NOT_FOUND_ERROR;
   return EPUCK_NO_ERROR;
-}*/
+  }*/
 
 //Setters
 /*error_code SetObjectPosition(WbDeviceTag handle, float* position)
-{
+  {
   //simxSetObjectPosition(handle, -1, position, simx_opmode_oneshot);
   return EPUCK_NO_ERROR;
-}*/
+  }*/
 
 //error_code SetJointVelocity(int handle, float velocity)
 //{
